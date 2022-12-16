@@ -144,4 +144,89 @@ FROM
 
 -- COMMAND ----------
 
+-- MAGIC %md
+-- MAGIC ORDER BY
+
+-- COMMAND ----------
+
+SELECT
+descUF,
+COUNT(DISTINCT idClienteUnico) AS qtClienteEstado
+FROM silver_olist.cliente
+GROUP BY descUF
+ORDER BY qtClienteEstado
+
+-- COMMAND ----------
+
+SELECT
+descUF,
+COUNT(DISTINCT idClienteUnico) AS qtClienteEstado
+FROM silver_olist.cliente
+GROUP BY descUF
+ORDER BY qtClienteEstado DESC
+
+-- COMMAND ----------
+
+SELECT
+  descUF,
+  COUNT(DISTINCT idClienteUnico) AS qtClienteEstado
+FROM
+  silver_olist.cliente
+GROUP BY
+  descUF
+ORDER BY
+  COUNT(DISTINCT idClienteUnico) DESC 
+
+-- COMMAND ----------
+
+SELECT
+  descUF,
+  COUNT(DISTINCT idClienteUnico) AS qtClienteEstado
+FROM
+  silver_olist.cliente
+GROUP BY
+  descUF
+ORDER BY
+  COUNT(DISTINCT idClienteUnico) DESC
+LIMIT
+  1
+
+-- COMMAND ----------
+
+-- MAGIC %md
+-- MAGIC ORDER BY
+
+-- COMMAND ----------
+
+SELECT
+  descUF,
+  COUNT(idVendedor) AS qtVendedor
+FROM
+  silver_olist.vendedor
+WHERE
+  descUF IN ('SP', 'MG', 'RJ', 'ES')
+GROUP BY
+  descUF
+HAVING
+  qtVendedor >= 100
+ORDER by
+  qtVendedor DESC
+
+-- COMMAND ----------
+
+-- MAGIC %md
+-- MAGIC 
+-- MAGIC JOINS
+
+-- COMMAND ----------
+
+SELECT
+  T1.*,
+  T2.descUF
+FROM
+  silver_olist.pedido AS T1
+  LEFT JOIN silver_olist.cliente AS T2 ON T1.idCliente = T2.idCliente
+
+-- COMMAND ----------
+
 
