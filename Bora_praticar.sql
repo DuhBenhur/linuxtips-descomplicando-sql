@@ -229,4 +229,295 @@ FROM
 
 -- COMMAND ----------
 
+-- Os clientes de qual estado pagam mais fretes?
+
+SELECT T1.idPedido,
+T1.vlFrete,
+T2.idCliente,
+T3.*
+
+FROM silver_olist.item_pedido AS T1
+LEFT JOIN silver_olist.pedido AS T2
+on T1.idPedido = T2.idPedido
+LEFT JOIN silver_olist.cliente AS T3
+ON T2.idCliente = T3.idCliente
+
+
+-- COMMAND ----------
+
+
+SELECT 
+T3.descUF,
+ROUND(AVG(T1.vlFrete),2) AS avgFrete
+
+FROM silver_olist.item_pedido AS T1
+LEFT JOIN silver_olist.pedido AS T2
+on T1.idPedido = T2.idPedido
+LEFT JOIN silver_olist.cliente AS T3
+ON T2.idCliente = T3.idCliente
+GROUP BY T3.descUF
+ORDER BY AVG(T1.vlFrete) DESC
+
+-- COMMAND ----------
+
+SELECT
+  T3.descUF,
+  ROUND(AVG(T1.vlFrete), 2) AS avgFrete
+FROM
+  silver_olist.item_pedido AS T1
+  LEFT JOIN silver_olist.pedido AS T2 on T1.idPedido = T2.idPedido
+  LEFT JOIN silver_olist.cliente AS T3 ON T2.idCliente = T3.idCliente
+GROUP BY
+  T3.descUF
+HAVING
+  avgFrete < 40
+ORDER BY
+  avgFrete DESC
+
+-- COMMAND ----------
+
+---Lista de VENDEDORES QUE ESTÃO DO ESTADO COM MAIS CLIENTE
+SELECT
+  idVendedor, descUF
+FROM
+  silver_olist.vendedor
+WHERE
+  descUF = (
+    SELECT
+      descUF
+    FROM
+      silver_olist.cliente
+    GROUP BY
+      descUF
+    ORDER BY
+      COUNT(DISTINCT idCLienteUnico) DESC
+    LIMIT
+      1
+  )
+
+-- COMMAND ----------
+
+---Lista de VENDEDORES QUE ESTÃO DO ESTADO COM MAIS CLIENTE
+SELECT
+  idVendedor, descUF
+FROM
+  silver_olist.vendedor
+WHERE
+  descUF = (
+    SELECT
+      descUF
+    FROM
+      silver_olist.cliente
+    GROUP BY
+      descUF
+    ORDER BY
+      COUNT(DISTINCT idCLienteUnico) DESC
+    LIMIT
+      1
+  )
+
+-- COMMAND ----------
+
+WITH tb_estados AS (
+  SELECT
+    descUF
+  FROM
+    silver_olist.cliente
+  GROUP BY
+    descUF
+  ORDER BY
+    COUNT(DISTINCT idCLienteUnico) DESC
+  LIMIT
+    2
+),
+tb_vendedores AS (
+SELECT
+  idVendedor,
+  descUF
+FROM
+  silver_olist.vendedor
+WHERE
+  descUF in (
+    SELECT
+      descUF
+    FROM
+      tb_estados
+  ))
+  
+  SELECT * FROM tb_vendedores
+
+-- COMMAND ----------
+
+WITH tb_pedido_nota AS (
+  SELECT
+    T1.idVendedor,
+    vlNota
+  FROM
+    silver_olist.item_pedido AS T1
+    LEFT JOIN silver_olist.avaliacao_pedido AS T2 ON T1.idPedido = T2.idPedido
+),
+tb_avg_vendedor AS (
+  SELECT
+    idVendedor,
+    AVG(vlNota)
+  FROM
+    tb_pedido_nota
+  GROUP BY
+    idvendedor
+)
+SELECT
+  *
+FROM
+  tb_avg_vendedor
+),
+tb_vendedor_estado AS (
+  SELECT
+    t1.*,
+    t2.descUF
+  FROM
+    tb_avg_vendedor AS T1
+    LEFT JOIN silver_olist.vendedor
+)
+
+-- COMMAND ----------
+
+-- LISTA DE VENDEDORES QUE ESTÃO NO ESTADO COM MAIS CLIENTES
+
+
+SELECT idVendedor, descUF
+FROM silver_olist.vendedor
+WHERE descUF = (
+
+  SELECT descUF
+  FROM silver_olist.cliente
+  GROUP BY descUF
+  ORDER BY COUNT(DISTINCT idClienteUnico) DESC
+  LIMIT 1
+
+)
+
+-- COMMAND ----------
+
+-- LISTA DE VENDEDORES QUE ESTÃO NOS 2 ESTADOS COM MAIS CLIENTES
+
+SELECT idVendedor, descUF
+FROM silver_olist.vendedor
+WHERE descUF IN (
+
+  SELECT descUF
+  FROM silver_olist.cliente
+  GROUP BY descUF
+  ORDER BY COUNT(DISTINCT idClienteUnico) DESC
+  LIMIT 2
+
+)
+
+-- COMMAND ----------
+
+WITH tb_estados AS (
+
+  SELECT descUF
+  FROM silver_olist.cliente
+  GROUP BY descUF
+  ORDER BY COUNT(DISTINCT idClienteUnico) DESC
+  LIMIT 2
+
+),
+
+tb_vendedores AS (
+  SELECT idVendedor, descUF
+  FROM silver_olist.vendedor
+  WHERE descUF IN (SELECT descUF FROM tb_estados)
+)
+
+SELECT *
+FROM tb_vendedores
+
+-- COMMAND ----------
+
+-- NOTA MÉDIA DOS PEDIDOS DOS VENDEDORES DE CADA ESTADO
+
+WITH tb_pedido_nota AS (
+
+  SELECT T1.idVendedor, T2.vlNota
+  FROM silver_olist.item_pedido AS T1
+
+  LEFT JOIN silver_olist.avaliacao_pedido AS T2
+  ON T1.idPedido = T2.idPedido
+),
+
+tb_avg_vendedor AS (
+
+  SELECT idVendedor,
+         AVG(vlNota) as avgNotaVendedor
+  FROM tb_pedido_nota
+  GROUP BY idVendedor
+),
+
+tb_vendedor_estado AS (
+
+  SELECT T1.*,
+         T2.descUF
+  FROM tb_avg_vendedor AS T1
+  LEFT JOIN silver_olist.vendedor AS T2
+  ON T1.idVendedor = T2.idVendedor
+
+)
+SELECT descUF,
+       AVG(avgNotaVendedor) AS avgNotaEstado
+
+FROM tb_vendedor_estado
+
+GROUP BY descUF
+ORDER BY avgNotaEstado DESC
+
+-- COMMAND ----------
+
+-- DBTITLE 1,Windows function
+WITH tb_vendas_vendedores AS (
+
+  SELECT 
+        idVendedor,
+        COUNT(*) As qtVendas
+
+  FROM silver_olist.item_pedido
+
+  GROUP BY idVendedor
+  ORDER BY qtVendas DESC
+
+),
+
+tb_row_number AS (
+
+  SELECT T1.*,
+         T2.descUf,
+         ROW_NUMBER() OVER (PARTITION BY T2.descUf ORDER BY qtVendas DESC) AS RN
+
+  FROM tb_vendas_vendedores AS T1
+
+  LEFT JOIN silver_olist.vendedor AS T2
+  ON T1.idVendedor = T2.idVendedor
+
+  QUALIFY RN <= 10
+
+  ORDER BY descUF, qtVendas DESC
+)
+
+SELECT * FROM tb_row_number
+
+-- COMMAND ----------
+
+SELECT *
+
+FROM A
+
+WHERE -- FILTRA NA FONTE
+
+QUALIFY -- FILTRA WINDOW FUNCTION
+
+HAVING -- FILTRA GROUP BY
+
+-- COMMAND ----------
+
+-- DBTITLE 1,#Window_functions
 
